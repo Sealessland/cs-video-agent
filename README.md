@@ -11,10 +11,11 @@ Agent 驱动的计算机科学科普视频生产线（Manim CE 0.22 + FFmpeg，S
                   纯 Python 状态模型      渲染 → 关键帧质检 → 定向修复 → 合成
 ```
 
-## 成品示例
+## 项目内容与模板
 
-仓库内的 `projects/` 只保留源文件（`lesson.json` + `storyboard.json`），
-渲染产物不进版本库，克隆后跑 `make preview` 即可本地复现：
+视频项目的内容（lesson/storyboard 与一切渲染产物）**只在本地，不进版本库**。
+仓库自带最小可渲染脚手架 `templates/project/`，`make new PROJECT=my_topic`
+即可从模板起一个新项目。已完成的项目作为能力参考：
 
 | 项目 | 时长 | 规模 | 覆盖主题 |
 |---|---|---|---|
@@ -70,7 +71,7 @@ make test                     # 单元测试
 │       ├── assemble.py concat + SRT 字幕烧制（libass）
 │       └── subtitles.py / critic_io.py
 ├── tools/            CLI：make / batch / new_project / render_scene / validate_scene / extract_frames / assemble_video / gen_actions_doc
-└── projects/         每期视频一个目录（见上表；仓库只含 lesson.json + storyboard.json）
+└── projects/         每期视频一个目录（本地生成，不入库；见上表）
 ```
 
 一个项目目录在完整跑过管线后是这样（生成部分已 gitignore）：

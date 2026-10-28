@@ -1,4 +1,5 @@
-"""真实 storyboard 的端到端静态检查：schema、语义回放、编译、导入。"""
+"""项目源（默认为模板，可替换为任意项目）的端到端静态检查：
+schema、语义回放、编译、导入。项目专属的深度断言在各项目的测试文件里。"""
 
 import importlib.util
 import json
@@ -20,18 +21,16 @@ def _load(project_dir):
 
 def test_lesson_segments_have_pedagogy_fields(project_dir):
     lesson, _ = _load(project_dir)
-    assert len(lesson.segments) >= 3
+    assert lesson.segments, "lesson has no segments"
     for seg in lesson.segments:
         assert seg.misconception and seg.visual_experiment and seg.takeaway
-    assert len(lesson.facts) >= 4
+    assert lesson.facts, "lesson has no facts"
 
 
 def test_storyboard_shape(project_dir):
     _, sb = _load(project_dir)
-    assert len(sb.scenes) == 3
-    total = sum(s.duration_hint for s in sb.scenes)
-    lo, hi = 55, 95
-    assert lo <= total <= hi, f"duration hints sum {total} outside [{lo},{hi}]"
+    assert len(sb.scenes) >= 1
+    assert sum(s.duration_hint for s in sb.scenes) > 0
     for sc in sb.scenes:
         assert sc.beats, f"{sc.id} has no beats"
         unknown = set(sc.invariants) - SUPPORTED_INVARIANTS
@@ -48,19 +47,12 @@ def test_semantic_replay_invariants(project_dir):
     for sc in sb.scenes:
         r = replay_scene(sc)
         assert r["ok"], f"{sc.id}: {r['violations']}"
-    # scene_2 必须真的扫了两遍全部 100 个连接
-    r2 = replay_scene(sb.scenes[1])
-    assert r2["summary"]["checks_total"] == 200
-    # scene_3 必须只返回 fd 5
-    r3 = replay_scene(sb.scenes[2])
-    assert r3["summary"]["returned"] == ["5"]
-    assert r3["summary"]["registered"] == ["3", "4", "5", "6", "7"]
 
 
 def test_compile_real_storyboard_and_import(tmp_path, project_dir):
     _, sb = _load(project_dir)
     paths = compile_storyboard(sb, tmp_path)
-    assert len(paths) == 3
+    assert len(paths) == len(sb.scenes)
     for p in paths:
         spec = importlib.util.spec_from_file_location(p.stem, p)
         mod = importlib.util.module_from_spec(spec)
