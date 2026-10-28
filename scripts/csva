@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# CS Video Agent 统一入口：自动使用 .venv，并屏蔽宿主向子进程注入的
+# PYTHONHOME/PYTHONPATH（某些沙箱/AppImage 环境会破坏 venv 解析）。
+#
+# 用法：./scripts/csva tools/make.py projects/epoll_explained
+#       ./scripts/csva -m pytest tests/ -q
+set -euo pipefail
+cd "$(dirname "$0")/.."
+if [ ! -x .venv/bin/python ]; then
+  echo ".venv 不存在，先运行: bash scripts/bootstrap.sh" >&2
+  exit 1
+fi
+exec env -u PYTHONHOME -u PYTHONPATH .venv/bin/python "$@"

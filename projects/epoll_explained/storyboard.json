@@ -1,0 +1,237 @@
+{
+  "lesson_ref": "lesson.json",
+  "scenes": [
+    {
+      "id": "scene_1",
+      "index": 1,
+      "title": "一百个连接，谁有数据？",
+      "duration_hint": 21,
+      "objects": [
+        {"id": "sockets", "type": "socket_grid", "params": {"rows": 10, "cols": 10, "center": [0, -0.35]}}
+      ],
+      "beats": [
+        {
+          "id": "b1",
+          "narration": "想象你的服务器同时维护着一千个连接——这里用一百个点示意",
+          "dwell": 2.6,
+          "actions": [
+            {"action": "show_title", "params": {"text": "1000 个连接，只有 1 个可读", "sub": "每个点 = 一个 socket 连接（100 点示意 1000 个）"}}
+          ]
+        },
+        {
+          "id": "b2",
+          "narration": "绝大多数时候，它们都是安静的",
+          "dwell": 2.6,
+          "actions": []
+        },
+        {
+          "id": "b3",
+          "narration": "某一刻，只有一个连接收到了新数据",
+          "dwell": 2.2,
+          "actions": [
+            {"action": "grid_mark_ready", "params": {"grid": "sockets", "index": 42}}
+          ]
+        },
+        {
+          "id": "b4",
+          "narration": null,
+          "dwell": 0.5,
+          "actions": [
+            {"action": "grid_pulse", "params": {"grid": "sockets", "index": 42}}
+          ]
+        },
+        {
+          "id": "b5",
+          "narration": "问题来了：程序怎么知道该处理哪一个？",
+          "dwell": 2.6,
+          "actions": [
+            {"action": "show_question", "params": {"text": "该处理哪一个？"}},
+            {"action": "grid_dim_except", "params": {"grid": "sockets", "keep": [42]}}
+          ]
+        },
+        {
+          "id": "b6",
+          "narration": "挨个问一遍？那就得检查全部一百个",
+          "dwell": 2.4,
+          "actions": []
+        }
+      ],
+      "invariants": []
+    },
+    {
+      "id": "scene_2",
+      "index": 2,
+      "title": "老办法：select / poll 的全量扫描",
+      "duration_hint": 30,
+      "objects": [
+        {"id": "sockets", "type": "socket_grid", "params": {"rows": 10, "cols": 10, "center": [0, -0.35]}}
+      ],
+      "beats": [
+        {
+          "id": "b1",
+          "narration": "select / poll 的老办法：每次调用，都把所有连接检查一遍",
+          "dwell": 3.6,
+          "actions": [
+            {"action": "show_title", "params": {"text": "select / poll", "sub": "每次调用，检查所有连接"}}
+          ]
+        },
+        {
+          "id": "b2",
+          "narration": "一次调用开始——逐个询问：你有数据吗？",
+          "dwell": 2.2,
+          "actions": [
+            {"action": "grid_mark_ready", "params": {"grid": "sockets", "index": 42, "subtle": true}},
+            {"action": "show_metric", "params": {"id": "checks", "text": "检查：0 个"}}
+          ]
+        },
+        {
+          "id": "b3",
+          "narration": null,
+          "dwell": 0.6,
+          "actions": [
+            {"action": "grid_scan", "params": {"grid": "sockets", "run_time": 4.2}}
+          ]
+        },
+        {
+          "id": "b4",
+          "narration": "检查满一百次，才发现 43 号是就绪的",
+          "dwell": 2.4,
+          "actions": [
+            {"action": "show_metric", "params": {"id": "checks", "text": "检查：100 个 · 就绪：1 个"}},
+            {"action": "grid_pulse", "params": {"grid": "sockets", "index": 42}}
+          ]
+        },
+        {
+          "id": "b5",
+          "narration": "下一次调用？从第 1 个再扫到第 100 个",
+          "dwell": 2.2,
+          "actions": [
+            {"action": "grid_scan", "params": {"grid": "sockets", "run_time": 2.8}},
+            {"action": "show_metric", "params": {"id": "checks", "text": "检查：200 个 · 就绪：1 个"}}
+          ]
+        },
+        {
+          "id": "b6",
+          "narration": "连接越多，每次调用就越贵——这就是 O(n) 的扫描成本",
+          "dwell": 3.2,
+          "actions": [
+            {"action": "show_takeaway", "params": {"text": "select / poll：每次调用都重复扫描全部连接 O(n)"}}
+          ]
+        }
+      ],
+      "invariants": ["scan_checks_every_socket"]
+    },
+    {
+      "id": "scene_3",
+      "index": 3,
+      "title": "epoll：把就绪判断移到事件发生时",
+      "duration_hint": 37,
+      "objects": [
+        {"id": "sockets", "type": "socket_stack", "params": {"fds": ["3", "4", "5", "6", "7"], "x": -5.4, "y_top": 2.3}},
+        {"id": "kernel", "type": "kernel_panel", "params": {"center": [-1.9, 0.8], "width": 2.7, "height": 3.2}},
+        {"id": "queue", "type": "ready_queue", "params": {"center": [2.6, 0.9]}},
+        {"id": "worker", "type": "worker_box", "params": {"center": [2.6, -1.5], "status": "epoll_wait：等待中…"}},
+        {
+          "id": "flow",
+          "type": "event_flow",
+          "params": {
+            "arrows": [
+              {"id": "s3", "from": "sockets.3", "to": "kernel.left", "faint": true},
+              {"id": "s4", "from": "sockets.4", "to": "kernel.left", "faint": true},
+              {"id": "s5", "from": "sockets.5", "to": "kernel.left", "faint": true},
+              {"id": "s6", "from": "sockets.6", "to": "kernel.left", "faint": true},
+              {"id": "s7", "from": "sockets.7", "to": "kernel.left", "faint": true},
+              {"id": "k2q", "from": "kernel.right", "to": "queue.in", "color": "EVENT", "tip": true},
+              {"id": "q2w", "from": "queue.bottom", "to": "worker.top", "color": "GOOD", "tip": true}
+            ]
+          }
+        }
+      ],
+      "beats": [
+        {
+          "id": "b1",
+          "narration": "epoll 换了个思路：『谁就绪了』，让内核替你记",
+          "dwell": 2.8,
+          "actions": [
+            {"action": "show_title", "params": {"text": "epoll", "sub": "把『谁就绪』的判断移到事件发生时"}}
+          ]
+        },
+        {
+          "id": "b2",
+          "narration": "先用 epoll_ctl 把连接注册进内核的 interest list——只注册一次",
+          "dwell": 3.0,
+          "actions": [
+            {"action": "flow_register", "params": {"kernel": "kernel", "stack": "sockets", "fds": ["3", "4", "5", "6", "7"]}}
+          ]
+        },
+        {
+          "id": "b3",
+          "narration": "没有数据的时候，epoll_wait 安心地睡，一个都不用查",
+          "dwell": 3.4,
+          "actions": [
+            {"action": "worker_state", "params": {"worker": "worker", "text": "epoll_wait：睡梦中，无需扫描", "color": "TEXT_DIM"}}
+          ]
+        },
+        {
+          "id": "b4",
+          "narration": "数据到达 fd 5：内核回调触发，就绪事件直接入队",
+          "dwell": 2.6,
+          "actions": [
+            {"action": "flow_emit", "params": {"flow": "flow", "arrow": "s5", "stack": "sockets", "fd": "5", "kernel": "kernel"}},
+            {"action": "queue_enqueue", "params": {"queue": "queue", "fd": "5", "from": "kernel.right"}}
+          ]
+        },
+        {
+          "id": "b5",
+          "narration": "epoll_wait 醒来，手里只有就绪的那一个，不是一百个",
+          "dwell": 2.4,
+          "actions": [
+            {"action": "queue_pop", "params": {"queue": "queue", "to": "worker.top"}},
+            {"action": "worker_receive", "params": {"worker": "worker"}},
+            {"action": "worker_state", "params": {"worker": "worker", "text": "返回就绪 fd：5（只有它）", "color": "GOOD"}}
+          ]
+        },
+        {
+          "id": "b6",
+          "narration": "连接从一百涨到一万，epoll 也只返回就绪列表",
+          "dwell": 2.4,
+          "actions": [
+            {
+              "action": "show_bars",
+              "params": {
+                "id": "bars",
+                "items": [
+                  {"label": "select / poll：每次检查全部连接", "value": 100, "color": "COST"},
+                  {"label": "epoll：只返回就绪的连接", "value": 1, "color": "GOOD"}
+                ],
+                "max_value": 100,
+                "unit": " 个"
+              }
+            }
+          ]
+        },
+        {
+          "id": "b7",
+          "narration": "当然，epoll 不是魔法 O(1)：注册、唤醒都有成本",
+          "dwell": 3.4,
+          "actions": [
+            {"action": "fade_slot", "params": {"id": "bars"}}
+          ]
+        },
+        {
+          "id": "b8",
+          "narration": "它省掉的，是每次调用对全部连接的重复扫描",
+          "dwell": 2.8,
+          "actions": [
+            {"action": "show_takeaway", "params": {"text": "epoll 省掉的，是每次调用对全部连接的重复扫描"}}
+          ]
+        }
+      ],
+      "invariants": [
+        "only_ready_sockets_are_returned",
+        "unregistered_sockets_never_enqueued",
+        "ready_list_no_duplicates"
+      ]
+    }
+  ]
+}

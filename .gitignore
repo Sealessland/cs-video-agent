@@ -1,0 +1,19 @@
+# 环境
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+
+# 渲染/生成产物（均可由 storyboard 重新生成）
+media/
+batch_report.json
+projects/*/media/
+projects/*/gen/
+projects/*/frames/
+projects/*/logs/
+projects/*/output/
+projects/*/critic/
+projects/*/scenes/
+
+# 项目里只保留源文件 lesson.json + storyboard.json（示例与测试需要）

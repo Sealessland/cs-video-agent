@@ -1,0 +1,49 @@
+{
+  "lesson_ref": "lesson.json",
+  "scenes": [
+    {
+      "id": "scene_1",
+      "index": 1,
+      "title": "示例场景：把我改掉",
+      "duration_hint": 14,
+      "objects": [
+        {"id": "sockets", "type": "socket_grid", "params": {"rows": 6, "cols": 6, "center": [0, -0.4]}}
+      ],
+      "beats": [
+        {
+          "id": "b1",
+          "narration": "把这里换成你的开场解说",
+          "dwell": 2.4,
+          "actions": [
+            {"action": "show_title", "params": {"text": "标题：改我", "sub": "副标题：也改我"}}
+          ]
+        },
+        {
+          "id": "b2",
+          "narration": "让其中一个连接就绪试试",
+          "dwell": 2.0,
+          "actions": [
+            {"action": "grid_mark_ready", "params": {"grid": "sockets", "index": 14}}
+          ]
+        },
+        {
+          "id": "b3",
+          "narration": null,
+          "dwell": 0.4,
+          "actions": [
+            {"action": "grid_pulse", "params": {"grid": "sockets", "index": 14}}
+          ]
+        },
+        {
+          "id": "b4",
+          "narration": "结尾说一句 takeaway",
+          "dwell": 2.4,
+          "actions": [
+            {"action": "show_takeaway", "params": {"text": "结论：改我"}}
+          ]
+        }
+      ],
+      "invariants": []
+    }
+  ]
+}

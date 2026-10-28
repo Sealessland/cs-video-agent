@@ -1,0 +1,66 @@
+{
+  "topic": "操作系统如何运行一个程序：ELF 装载、execve、虚拟内存与文件描述符",
+  "title": "操作系统如何运行一个程序",
+  "audience": "学过 C 与 Linux 基础、想建立系统级直觉的开发者",
+  "duration_target_sec": [180, 240],
+  "facts": [
+    "ELF 头记录 magic（7f 45 4c 46）、架构与入口地址；Program Header Table 描述 Segment（执行视图，内核/加载器使用，必需），Section Header Table 描述 Section（链接视图，链接器/GDB 使用，运行不需要，strip 可删）",
+    "内核装载只看 Program Header：PT_LOAD 指明文件哪个区间映射到哪个虚拟地址区间、赋什么权限（R/W/X）；不是按 .text/.data 逐个 Section 处理",
+    "若存在 PT_INTERP，最先运行的是动态链接器（如 /lib64/ld-linux-x86-64.so.2）：装载依赖共享库、处理重定位、初始化 GOT/PLT，之后控制权才回到程序入口",
+    "execve 是程序加载与执行的唯一入口：解除旧用户态映射并按 ELF 重建；RIP 重置为入口（通常 _start），堆栈清空重建；PID/PPID/工作目录/已打开 fd 保持不变（除非设置了 FD_CLOEXEC）",
+    "fork 表现为执行流分叉并立即完成状态复制（COW 写时复制）；父子 PID 不同，fd 表继承且指向同一组 struct file，文件偏移量 f_pos 保存在文件实例中、父子共享",
+    "mmap 的本质是注册一个 VMA（记账），而非交付物理内存；访存由 MMU 硬件管辖，首次访问未分配页触发缺页异常，内核查 VMA：合法则分配物理页并填充页表，违约则 SIGSEGV",
+    "fd 是指向操作系统对象的非负整数索引，把设备、信息通道、系统信息统一为字节流；open 强制新建实例（独立 offset），dup 复用同一实例（共享 offset）；/proc 是内核状态的文件路径窗口",
+    "管道是依赖 fd 的单向无边界字节流；Socket 本质也是 fd，因此可以放入 select/poll/epoll 统一管理"
+  ],
+  "segments": [
+    {
+      "id": "seg_overview",
+      "title": "程序运行的完整链路",
+      "misconception": "「shell 负责运行程序」——实际上 shell 只发起请求，创建与装载全部由内核完成",
+      "visual_experiment": "用 shell → 内核 ← 磁盘ELF → 进程 的管线图，让每个箭头的脉冲对应一次真实职责转移",
+      "takeaway": "运行一个程序是 shell、内核、ELF 文件三方协作的链路，而不是单一动作",
+      "narration_outline": ["shell 请求内核创建进程", "内核读取 ELF", "按图装载"]
+    },
+    {
+      "id": "seg_elf",
+      "title": "ELF 文件结构：链接视图与执行视图",
+      "misconception": "「内核按 .text/.data 这些 Section 名字装载程序」",
+      "visual_experiment": "同一组 Section 方块在链接视图（平铺+符号表）与执行视图（按 PT_LOAD 权限归组、符号表淡出）之间 morph",
+      "takeaway": "执行时看 Segment（PT_LOAD），链接与分析时看 Section；strip 删掉 Section 信息不影响运行",
+      "narration_outline": ["ELF 头", "Section 视图", "Segment 视图", "两种视图分工"]
+    },
+    {
+      "id": "seg_execve",
+      "title": "execve 装载过程",
+      "misconception": "「execve 是把代码塞进现有进程继续跑」——实际是整体重建用户态，execve 成功后不再返回",
+      "visual_experiment": "子进程状态从「unmap」到「/bin/ls」逐步变化，旁边卡片列出不变量：PID、cwd、fd 表",
+      "takeaway": "execve = 解除旧映射 + 按 PT_LOAD 重建 + 初始栈；进程身份与 fd 继承",
+      "narration_outline": ["fork 出子进程", "unmap 旧内存", "按 PT_LOAD 重建", "初始栈与入口", "身份保留", "动态链接器先跑"]
+    },
+    {
+      "id": "seg_addr",
+      "title": "虚拟地址空间与缺页",
+      "misconception": "「mmap/brk 分配内存 = 立即拿到物理内存」",
+      "visual_experiment": "VA 侧登记 VMA 时物理内存格全部保持熄灭；首次访存的脉冲才点亮一格物理页；访问未登记区域出现 SIGSEGV 红叉",
+      "takeaway": "mmap 只登记 VMA；物理页在第一次缺页时才分配；越界访存 SIGSEGV",
+      "narration_outline": ["地址空间布局", "mmap 记账", "缺页分配", "COW", "SIGSEGV"]
+    },
+    {
+      "id": "seg_fd",
+      "title": "文件描述符与内核对象",
+      "misconception": "「fd 就是文件」——fd 只是索引；偏移量在内核实例上，dup/open/fork 的语义完全不同",
+      "visual_experiment": "fd 表连线动画：dup 两条线指向同一实例、f_pos 共同推进；open 新实例独立计数；fork 子表副本连向同一组实例",
+      "takeaway": "fd 是索引；dup 共享实例与 f_pos，open 新建实例；fork 复制 fd 表、实例共享；管道/socket/procfs 皆是 fd",
+      "narration_outline": ["fd 索引", "open/dup/read 语义", "fork 继承", "一切皆字节流"]
+    },
+    {
+      "id": "seg_recap",
+      "title": "全链路回顾",
+      "misconception": "「这些机制彼此独立」——ELF、execve、VMA、fd 是同一条流水线的四段",
+      "visual_experiment": "回到第一幕的管线图，按顺序重新点亮并配对每段的核心结论",
+      "takeaway": "运行程序 = 内核按 ELF 重建进程 + 惰性虚拟内存 + 统一的 fd 接口",
+      "narration_outline": ["四步串讲", "对应关系"]
+    }
+  ]
+}
